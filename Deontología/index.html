@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Cuestionario de Valores Sociales y Deontología Profesional</title>
+      <style>
+         body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1250px;
+            padding: 20px;
+            margin: 0 auto;
+            padding-top: 105px;
+            background-color: #f4f4f4;
+         }
+         .quiz-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+         }
+         h1 {
+            color: #333;
+         }
+         .question {
+            margin-bottom: 20px;
+         }
+         .options {
+            display: flex;
+            flex-direction: column;
+         }
+         .option {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9e9e9;
+            border: none;
+            border-radius: 4px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-align: left;
+         }
+         .option:hover {
+            background-color: #d4d4d4;
+         }
+         .option.correct {
+            background-color: #9fff9c;
+         }
+         .option.incorrect {
+            background-color: #ffa8a8;
+         }
+         #score-container {
+            background-color: white;
+            padding: 20px 250px;
+            left: 0;
+            top: 0;
+            position: fixed;
+            width: -webkit-fill-available;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+         }
+         #reset-button,
+         #randomize-button {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+         }
+         #randomize-button {
+            background-color: #4caf50;
+         }
+      </style>
+   </head>
+   <body>
+      <div id="score-container">
+         <span>Aciertos: <span id="correct-score">0</span>/120 | Fallos: <span id="incorrect-score">0</span>/120</span>
+         <div>
+            <button id="randomize-button">Preguntas Aleatorias</button>
+            <button id="reset-button">Reiniciar puntuación</button>
+         </div>
+      </div>
+      <h1>Cuestionario de Valores Sociales y Deontología Profesional</h1>
+      <div id="quiz-container"></div>
+
+      <script type="module">
+         import quizData from "/quizData.js";
+         let correctScore = 0;
+         let incorrectScore = 0;
+         let userAnswers = {};
+         let currentQuizData = [...quizData];
+
+         function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+               const j = Math.floor(Math.random() * (i + 1));
+               [array[i], array[j]] = [array[j], array[i]];
+            }
+         }
+
+         function createQuiz() {
+            const quizContainer = document.getElementById("quiz-container");
+            quizContainer.innerHTML = ""; // Clear existing questions
+            currentQuizData.forEach((question, index) => {
+               const questionElement = document.createElement("div");
+               questionElement.classList.add("quiz-container");
+               questionElement.innerHTML = `
+            <div class="question">
+                <h3>${index + 1}. ${question.question}</h3>
+                <div class="options">
+                    ${question.options
+                       .map(
+                          (option, optionIndex) => `
+                        <button class="option" data-question="${index}" data-option="${optionIndex}">
+                            ${String.fromCharCode(97 + optionIndex)}. ${option}
+                        </button>
+                    `
+                       )
+                       .join("")}
+                </div>
+            </div>
+        `;
+               quizContainer.appendChild(questionElement);
+            });
+         }
+
+         function checkAnswer(questionIndex, optionIndex) {
+            if (userAnswers.hasOwnProperty(questionIndex)) {
+               return; // La pregunta ya ha sido respondida
+            }
+
+            const correctAnswer = currentQuizData[questionIndex].correct;
+            const options = document.querySelectorAll(`[data-question="${questionIndex}"]`);
+
+            options.forEach((option) => {
+               option.disabled = true;
+               if (parseInt(option.dataset.option) === correctAnswer) {
+                  option.classList.add("correct");
+               } else if (parseInt(option.dataset.option) === optionIndex) {
+                  option.classList.add("incorrect");
+               }
+            });
+
+            if (optionIndex === correctAnswer) {
+               correctScore++;
+            } else {
+               incorrectScore++;
+            }
+
+            userAnswers[questionIndex] = optionIndex;
+            updateScore();
+         }
+
+         function updateScore() {
+            document.getElementById("correct-score").textContent = correctScore;
+            document.getElementById("incorrect-score").textContent = incorrectScore;
+            localStorage.setItem("quizCorrectScore", correctScore);
+            localStorage.setItem("quizIncorrectScore", incorrectScore);
+            localStorage.setItem("quizUserAnswers", JSON.stringify(userAnswers));
+         }
+
+         function resetScore() {
+            correctScore = 0;
+            incorrectScore = 0;
+            userAnswers = {};
+            updateScore();
+            localStorage.removeItem("quizUserAnswers");
+            location.reload();
+         }
+
+         function loadSavedState() {
+            correctScore = parseInt(localStorage.getItem("quizCorrectScore")) || 0;
+            incorrectScore = parseInt(localStorage.getItem("quizIncorrectScore")) || 0;
+            userAnswers = JSON.parse(localStorage.getItem("quizUserAnswers")) || {};
+
+            updateScore();
+
+            Object.entries(userAnswers).forEach(([questionIndex, optionIndex]) => {
+               const options = document.querySelectorAll(`[data-question="${questionIndex}"]`);
+               const correctAnswer = currentQuizData[questionIndex].correct;
+
+               options.forEach((option) => {
+                  option.disabled = true;
+                  if (parseInt(option.dataset.option) === correctAnswer) {
+                     option.classList.add("correct");
+                  } else if (parseInt(option.dataset.option) === parseInt(optionIndex)) {
+                     option.classList.add("incorrect");
+                  }
+               });
+            });
+         }
+
+         function randomizeQuestions() {
+            shuffleArray(currentQuizData);
+            createQuiz();
+            loadSavedState();
+         }
+
+         document.addEventListener("DOMContentLoaded", () => {
+            createQuiz();
+            loadSavedState();
+
+            document.addEventListener("click", (e) => {
+               if (e.target.classList.contains("option")) {
+                  const questionIndex = parseInt(e.target.dataset.question);
+                  const optionIndex = parseInt(e.target.dataset.option);
+                  checkAnswer(questionIndex, optionIndex);
+               }
+            });
+
+            document.getElementById("reset-button").addEventListener("click", resetScore);
+            document.getElementById("randomize-button").addEventListener("click", randomizeQuestions);
+         });
+      </script>
+   </body>
+</html>
